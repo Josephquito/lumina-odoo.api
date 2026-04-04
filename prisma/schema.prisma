@@ -1,0 +1,83 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  moduleFormat    = "commonjs"
+}
+
+datasource db {
+  provider = "postgresql"
+
+}
+
+model Marca {
+  id        Int       @id @default(autoincrement())
+  nombre    String    @unique
+  productos Producto[]
+
+  @@map("marcas")
+}
+
+model Categoria {
+  id        Int       @id @default(autoincrement())
+  nombre    String    @unique
+  productos Producto[]
+
+  @@map("categorias")
+}
+
+model Producto {
+  id               Int        @id @default(autoincrement())
+  odooId           Int        @unique
+  nombre           String
+  nombreWeb        String?
+  descripcionCorta String?
+  descripcionLarga String?
+  precio           Float
+  precioBase       Float
+  sku              String?    @unique
+  stock            Float      @default(0)
+  publicarWeb      Boolean    @default(false)
+  grupoVariante    String?
+  odooWriteDate    DateTime?
+  creadoEn         DateTime   @default(now())
+  actualizadoEn    DateTime   @updatedAt
+
+  marcaId          Int?
+  marca            Marca?     @relation(fields: [marcaId], references: [id])
+  categoriaId      Int?
+  categoria        Categoria? @relation(fields: [categoriaId], references: [id])
+  imagenes         ProductoImagen[]  // ← relación con imágenes
+
+  @@map("productos")
+}
+
+// Tabla de imágenes — un producto puede tener N imágenes
+model ProductoImagen {
+  id          Int      @id @default(autoincrement())
+  url         String               // URL pública en tu hosting
+  orden       Int      @default(0) // para ordenar las imágenes (0 = principal)
+  creadoEn    DateTime @default(now())
+
+  productoId  Int
+  producto    Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@map("producto_imagenes")
+}
+
+model Usuario {
+  id           Int      @id @default(autoincrement())
+  nombre       String
+  email        String   @unique
+  password     String   // bcrypt hash
+  rol          Rol      @default(VENDEDOR)
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+enum Rol {
+  ADMIN
+  VENDEDOR
+}
