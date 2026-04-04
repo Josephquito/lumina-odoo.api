@@ -61,7 +61,7 @@ export class CatalogController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.catalogService.getProducts({
+    return this.catalogService.getProductosAgrupados({
       marca,
       categoria,
       buscar,

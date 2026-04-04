@@ -228,20 +228,50 @@ export class CatalogService {
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
       where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
-    if (buscar) {
-      where.OR = [
-        { nombreWeb: { contains: buscar, mode: 'insensitive' } },
-        { nombre: { contains: buscar, mode: 'insensitive' } },
-        { sku: { contains: buscar } },
-      ];
-    }
     this.aplicarFiltroExtra(where, filtroExtra);
 
-    return this.prisma.producto.findMany({
+    const todos = await this.prisma.producto.findMany({
       where,
       orderBy: { nombreWeb: 'asc' },
-      include: { marca: true, categoria: true, imagenes: true },
+      include: {
+        marca: true,
+        categoria: true,
+        imagenes: { orderBy: { orden: 'asc' } },
+      },
     });
+
+    // Agrupar igual que getProductosAgrupados
+    const mapaGrupos = new Map<string, any>();
+    const sinGrupo: any[] = [];
+
+    for (const producto of todos) {
+      const grupo = producto.grupoVariante?.trim();
+      if (grupo) {
+        if (!mapaGrupos.has(grupo)) {
+          mapaGrupos.set(grupo, {
+            ...producto,
+            nombreWeb: grupo,
+            variantes: [producto],
+            stock: producto.stock,
+          });
+        } else {
+          const existente = mapaGrupos.get(grupo);
+          existente.variantes.push(producto);
+          existente.stock += producto.stock;
+          if (!existente.imagenes?.length && producto.imagenes?.length) {
+            existente.imagenes = producto.imagenes;
+          }
+        }
+      } else {
+        sinGrupo.push(producto);
+      }
+    }
+
+    const resultado = [...Array.from(mapaGrupos.values()), ...sinGrupo];
+    resultado.sort((a, b) =>
+      (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
+    );
+    return resultado;
   }
 
   async getMarcas() {
@@ -363,10 +393,11 @@ export class CatalogService {
     marca?: string;
     categoria?: string;
     buscar?: string;
+    filtroExtra?: string;
     page: number;
     limit: number;
   }) {
-    const { marca, categoria, buscar, page, limit } = filtros;
+    const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
 
     const where: any = {
       publicarWeb: true,
@@ -376,6 +407,7 @@ export class CatalogService {
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
       where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
+    this.aplicarFiltroExtra(where, filtroExtra);
 
     const todos = await this.prisma.producto.findMany({
       where,
