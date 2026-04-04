@@ -35,6 +35,27 @@ export class CatalogService {
     return this.categoriasMap[valor.trim()] || valor.trim();
   }
 
+  private aplicarFiltroExtra(where: any, filtroExtra?: string) {
+    switch (filtroExtra) {
+      case 'sin_imagen':
+        where.imagenes = { none: {} };
+        break;
+      case 'sin_descripcion':
+        where.descripcionCorta = null;
+        where.descripcionLarga = null;
+        break;
+      case 'sin_categoria':
+        where.categoriaId = null;
+        break;
+      case 'sin_sku':
+        where.sku = null;
+        break;
+      case 'sin_nombre_web':
+        where.grupoVariante = null;
+        break;
+    }
+  }
+
   async syncInicial() {
     this.logger.log('Iniciando sync inicial Odoo → PostgreSQL...');
 
@@ -150,17 +171,14 @@ export class CatalogService {
     marca?: string;
     categoria?: string;
     buscar?: string;
+    filtroExtra?: string;
     page: number;
     limit: number;
   }) {
-    const { marca, categoria, buscar, page, limit } = filtros;
+    const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      publicarWeb: true,
-      stock: { gt: 0 },
-      sku: { not: null },
-    };
+    const where: any = {};
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
       where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
@@ -171,6 +189,7 @@ export class CatalogService {
         { sku: { contains: buscar } },
       ];
     }
+    this.aplicarFiltroExtra(where, filtroExtra);
 
     const [productos, total] = await Promise.all([
       this.prisma.producto.findMany({
@@ -178,7 +197,7 @@ export class CatalogService {
         skip,
         take: limit,
         orderBy: { nombreWeb: 'asc' },
-        include: { marca: true, categoria: true },
+        include: { marca: true, categoria: true, imagenes: true },
       }),
       this.prisma.producto.count({ where }),
     ]);
@@ -187,6 +206,34 @@ export class CatalogService {
       data: productos,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  async getAllProducts(filtros: {
+    marca?: string;
+    categoria?: string;
+    buscar?: string;
+    filtroExtra?: string;
+  }) {
+    const { marca, categoria, buscar, filtroExtra } = filtros;
+
+    const where: any = {};
+    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
+    if (categoria)
+      where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
+    if (buscar) {
+      where.OR = [
+        { nombreWeb: { contains: buscar, mode: 'insensitive' } },
+        { nombre: { contains: buscar, mode: 'insensitive' } },
+        { sku: { contains: buscar } },
+      ];
+    }
+    this.aplicarFiltroExtra(where, filtroExtra);
+
+    return this.prisma.producto.findMany({
+      where,
+      orderBy: { nombreWeb: 'asc' },
+      include: { marca: true, categoria: true, imagenes: true },
+    });
   }
 
   async getMarcas() {
