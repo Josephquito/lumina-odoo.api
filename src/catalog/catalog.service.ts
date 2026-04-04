@@ -178,7 +178,11 @@ export class CatalogService {
     const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: any = {
+      publicarWeb: true, // ← de vuelta
+      stock: { gt: 0 }, // ← de vuelta
+      sku: { not: null }, // ← de vuelta
+    };
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
       where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
@@ -216,7 +220,11 @@ export class CatalogService {
   }) {
     const { marca, categoria, buscar, filtroExtra } = filtros;
 
-    const where: any = {};
+    const where: any = {
+      publicarWeb: true,
+      stock: { gt: 0 },
+      sku: { not: null },
+    };
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
       where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
