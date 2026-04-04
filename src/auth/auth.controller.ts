@@ -14,7 +14,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
-import { Rol } from '../../generated/prisma/client';
+import { Rol } from './../generated/prisma/client';
 
 @Controller('api/auth')
 export class AuthController {
