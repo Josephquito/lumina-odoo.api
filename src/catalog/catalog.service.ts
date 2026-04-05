@@ -375,6 +375,27 @@ export class CatalogService {
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
+  private aplicarFiltroExtraAgrupado(
+    productos: any[],
+    filtroExtra?: string,
+  ): any[] {
+    switch (filtroExtra) {
+      case 'sin_imagen':
+        return productos.filter((p) => !p.imagenes?.length);
+      case 'sin_descripcion':
+        return productos.filter(
+          (p) => !p.descripcionCorta && !p.descripcionLarga,
+        );
+      case 'sin_categoria':
+        return productos.filter((p) => !p.categoriaId);
+      case 'sin_sku':
+        return productos.filter((p) => !p.sku);
+      case 'sin_nombre_web':
+        return productos.filter((p) => !p.grupoVariante);
+      default:
+        return productos;
+    }
+  }
 
   async getAllProducts(filtros: {
     marca?: string;
@@ -391,9 +412,7 @@ export class CatalogService {
     };
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
-      where.categoria = {
-        nombre: { equals: categoria, mode: 'insensitive' },
-      };
+      where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
     if (buscar) {
       where.OR = [
         { nombreWeb: { contains: buscar, mode: 'insensitive' } },
@@ -401,7 +420,6 @@ export class CatalogService {
         { sku: { contains: buscar } },
       ];
     }
-    this.aplicarFiltroExtra(where, filtroExtra);
 
     const todos = await this.prisma.producto.findMany({
       where,
@@ -413,11 +431,101 @@ export class CatalogService {
       },
     });
 
-    const resultado = this.agruparProductos(todos);
-    resultado.sort((a, b) =>
+    const agrupados = this.agruparProductos(todos);
+    const filtrados = this.aplicarFiltroExtraAgrupado(agrupados, filtroExtra);
+
+    filtrados.sort((a, b) =>
       (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
     );
-    return resultado;
+
+    return filtrados;
+  }
+
+  async getProductosAgrupados(filtros: {
+    marca?: string;
+    categoria?: string;
+    buscar?: string;
+    filtroExtra?: string;
+    page: number;
+    limit: number;
+  }) {
+    const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
+
+    const where: any = {
+      publicarWeb: true,
+      stock: { gt: 0 },
+      sku: { not: null },
+    };
+    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
+    if (categoria)
+      where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
+
+    const todos = await this.prisma.producto.findMany({
+      where,
+      orderBy: { nombreWeb: 'asc' },
+      include: {
+        marca: true,
+        categoria: true,
+        imagenes: { orderBy: { orden: 'asc' } },
+      },
+    });
+
+    const agrupados = this.agruparProductos(todos);
+
+    // Búsqueda de texto post-agrupación
+    const filtradosBuscar = buscar
+      ? agrupados.filter(
+          (p) =>
+            p.nombreWeb?.toLowerCase().includes(buscar.toLowerCase()) ||
+            p.nombre?.toLowerCase().includes(buscar.toLowerCase()) ||
+            p.sku?.includes(buscar),
+        )
+      : agrupados;
+
+    // filtroExtra sobre agrupados
+    const filtrados = this.aplicarFiltroExtraAgrupado(
+      filtradosBuscar,
+      filtroExtra,
+    );
+
+    filtrados.sort((a, b) =>
+      (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
+    );
+
+    // Marcas y categorías únicas de los filtrados
+    const marcasMap = new Map<number, { id: number; nombre: string }>();
+    const categoriasMap = new Map<number, { id: number; nombre: string }>();
+
+    for (const p of filtrados) {
+      const variantes = p.variantes ?? [p];
+      for (const v of variantes) {
+        if (v.marca)
+          marcasMap.set(v.marca.id, { id: v.marca.id, nombre: v.marca.nombre });
+        if (v.categoria)
+          categoriasMap.set(v.categoria.id, {
+            id: v.categoria.id,
+            nombre: v.categoria.nombre,
+          });
+      }
+    }
+
+    const marcasDisponibles = Array.from(marcasMap.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre),
+    );
+    const categoriasDisponibles = Array.from(categoriasMap.values()).sort(
+      (a, b) => a.nombre.localeCompare(b.nombre),
+    );
+
+    const total = filtrados.length;
+    const skip = (page - 1) * limit;
+    const data = filtrados.slice(skip, skip + limit);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      marcasDisponibles,
+      categoriasDisponibles,
+    };
   }
 
   async getMarcas() {
@@ -451,91 +559,5 @@ export class CatalogService {
         imagenes: { orderBy: { orden: 'asc' } },
       },
     });
-  }
-
-  async getProductosAgrupados(filtros: {
-    marca?: string;
-    categoria?: string;
-    buscar?: string;
-    filtroExtra?: string;
-    page: number;
-    limit: number;
-  }) {
-    const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
-
-    const where: any = {
-      publicarWeb: true,
-      stock: { gt: 0 },
-      sku: { not: null },
-    };
-    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
-    if (categoria)
-      where.categoria = {
-        nombre: { equals: categoria, mode: 'insensitive' },
-      };
-    this.aplicarFiltroExtra(where, filtroExtra);
-
-    const todos = await this.prisma.producto.findMany({
-      where,
-      orderBy: { nombreWeb: 'asc' },
-      include: {
-        marca: true,
-        categoria: true,
-        imagenes: { orderBy: { orden: 'asc' } },
-      },
-    });
-
-    const todos_agrupados = this.agruparProductos(todos);
-
-    const filtrados = buscar
-      ? todos_agrupados.filter(
-          (p) =>
-            p.nombreWeb?.toLowerCase().includes(buscar.toLowerCase()) ||
-            p.nombre?.toLowerCase().includes(buscar.toLowerCase()) ||
-            p.sku?.includes(buscar),
-        )
-      : todos_agrupados;
-
-    filtrados.sort((a, b) =>
-      (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
-    );
-
-    // Extraer marcas y categorías únicas de los productos filtrados
-    const marcasMap = new Map<number, { id: number; nombre: string }>();
-    const categoriasMap = new Map<number, { id: number; nombre: string }>();
-
-    for (const p of filtrados) {
-      const variantes = p.variantes ?? [p];
-      for (const v of variantes) {
-        if (v.marca)
-          marcasMap.set(v.marca.id, {
-            id: v.marca.id,
-            nombre: v.marca.nombre,
-          });
-        if (v.categoria)
-          categoriasMap.set(v.categoria.id, {
-            id: v.categoria.id,
-            nombre: v.categoria.nombre,
-          });
-      }
-    }
-
-    const marcasDisponibles = Array.from(marcasMap.values()).sort((a, b) =>
-      a.nombre.localeCompare(b.nombre),
-    );
-    const categoriasDisponibles = Array.from(categoriasMap.values()).sort(
-      (a, b) => a.nombre.localeCompare(b.nombre),
-    );
-
-    const total = filtrados.length;
-    const skip = (page - 1) * limit;
-    const data = filtrados.slice(skip, skip + limit);
-
-    return {
-      data,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-      marcasDisponibles,
-      categoriasDisponibles,
-    };
   }
 }
