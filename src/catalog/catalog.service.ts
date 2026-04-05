@@ -30,6 +30,8 @@ export class CatalogService {
     private odoo: OdooService,
   ) {}
 
+  // ─── Privados ────────────────────────────────────────────────────────────────
+
   private resolverCategoria(valor: any): string | null {
     if (!valor || typeof valor !== 'string' || !valor.trim()) return null;
     return this.categoriasMap[valor.trim()] || valor.trim();
@@ -55,6 +57,82 @@ export class CatalogService {
         break;
     }
   }
+
+  private agruparProductos(todos: any[]): any[] {
+    const mapaGrupos = new Map<string, any>();
+    const sinGrupo: any[] = [];
+
+    for (const producto of todos) {
+      const grupo = producto.grupoVariante?.trim();
+      if (grupo) {
+        if (!mapaGrupos.has(grupo)) {
+          mapaGrupos.set(grupo, {
+            ...producto,
+            nombreWeb: grupo,
+            variantes: [producto],
+            stock: producto.stock,
+          });
+        } else {
+          const existente = mapaGrupos.get(grupo);
+          existente.variantes.push(producto);
+          existente.stock += producto.stock;
+        }
+      } else {
+        sinGrupo.push(producto);
+      }
+    }
+
+    // Post-proceso: SKU, imagen y precio deterministas
+    for (const [, grupo] of mapaGrupos) {
+      // Imagen: primera variante que tenga imagen
+      const conImagen = grupo.variantes.filter((v: any) => v.imagenes?.length);
+      if (conImagen.length) {
+        grupo.imagenes = conImagen[0].imagenes;
+      }
+
+      // SKU: el menor lexicográficamente → siempre el mismo sin importar el orden de Prisma
+      const skus = grupo.variantes
+        .map((v: any) => v.sku)
+        .filter(Boolean)
+        .sort();
+      grupo.sku = skus[0] ?? null;
+
+      // Precio: el menor del grupo
+      grupo.precio = Math.min(...grupo.variantes.map((v: any) => v.precio));
+    }
+
+    return [...Array.from(mapaGrupos.values()), ...sinGrupo];
+  }
+
+  private calcularPrecioConIva(product: any, taxMap: Map<number, any>): number {
+    if (!product.taxes_id?.length) return product.list_price;
+    let precio = product.list_price;
+    for (const taxId of product.taxes_id) {
+      const tax = taxMap.get(taxId);
+      if (!tax) continue;
+      if (tax.amount_type === 'percent' && !tax.price_include) {
+        precio = precio * (1 + tax.amount / 100);
+      }
+    }
+    return Math.round(precio * 100) / 100;
+  }
+
+  private extraerMarca(product: any, posCategMap: Map<number, string>): string {
+    if (!product.pos_categ_ids) return '';
+    if (typeof product.pos_categ_ids === 'string') return product.pos_categ_ids;
+    if (
+      Array.isArray(product.pos_categ_ids) &&
+      product.pos_categ_ids.length > 0
+    ) {
+      const primera = product.pos_categ_ids[0];
+      if (typeof primera === 'number') return posCategMap.get(primera) || '';
+      if (Array.isArray(primera)) return primera[1] || '';
+      if (typeof primera === 'string') return primera;
+    }
+    return '';
+  }
+
+  // ─── Sync ────────────────────────────────────────────────────────────────────
 
   async syncInicial() {
     this.logger.log('Iniciando sync inicial Odoo → PostgreSQL...');
@@ -167,146 +245,6 @@ export class CatalogService {
     };
   }
 
-  async getProducts(filtros: {
-    marca?: string;
-    categoria?: string;
-    buscar?: string;
-    filtroExtra?: string;
-    page: number;
-    limit: number;
-  }) {
-    const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
-    const skip = (page - 1) * limit;
-
-    const where: any = {
-      publicarWeb: true, // ← de vuelta
-      stock: { gt: 0 }, // ← de vuelta
-      sku: { not: null }, // ← de vuelta
-    };
-    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
-    if (categoria)
-      where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
-    if (buscar) {
-      where.OR = [
-        { nombreWeb: { contains: buscar, mode: 'insensitive' } },
-        { nombre: { contains: buscar, mode: 'insensitive' } },
-        { sku: { contains: buscar } },
-      ];
-    }
-    this.aplicarFiltroExtra(where, filtroExtra);
-
-    const [productos, total] = await Promise.all([
-      this.prisma.producto.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { nombreWeb: 'asc' },
-        include: { marca: true, categoria: true, imagenes: true },
-      }),
-      this.prisma.producto.count({ where }),
-    ]);
-
-    return {
-      data: productos,
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    };
-  }
-
-  async getAllProducts(filtros: {
-    marca?: string;
-    categoria?: string;
-    buscar?: string;
-    filtroExtra?: string;
-  }) {
-    const { marca, categoria, buscar, filtroExtra } = filtros;
-
-    const where: any = {
-      publicarWeb: true,
-      stock: { gt: 0 },
-      sku: { not: null },
-    };
-    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
-    if (categoria)
-      where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
-    this.aplicarFiltroExtra(where, filtroExtra);
-
-    const todos = await this.prisma.producto.findMany({
-      where,
-      orderBy: { nombreWeb: 'asc' },
-      include: {
-        marca: true,
-        categoria: true,
-        imagenes: { orderBy: { orden: 'asc' } },
-      },
-    });
-
-    // Agrupar igual que getProductosAgrupados
-    const mapaGrupos = new Map<string, any>();
-    const sinGrupo: any[] = [];
-
-    for (const producto of todos) {
-      const grupo = producto.grupoVariante?.trim();
-      if (grupo) {
-        if (!mapaGrupos.has(grupo)) {
-          mapaGrupos.set(grupo, {
-            ...producto,
-            nombreWeb: grupo,
-            variantes: [producto],
-            stock: producto.stock,
-          });
-        } else {
-          const existente = mapaGrupos.get(grupo);
-          existente.variantes.push(producto);
-          existente.stock += producto.stock;
-          if (!existente.imagenes?.length && producto.imagenes?.length) {
-            existente.imagenes = producto.imagenes;
-          }
-        }
-      } else {
-        sinGrupo.push(producto);
-      }
-    }
-
-    const resultado = [...Array.from(mapaGrupos.values()), ...sinGrupo];
-    resultado.sort((a, b) =>
-      (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
-    );
-    return resultado;
-  }
-
-  async getMarcas() {
-    return this.prisma.marca.findMany({
-      where: {
-        productos: {
-          some: { publicarWeb: true, stock: { gt: 0 }, sku: { not: null } },
-        },
-      },
-      orderBy: { nombre: 'asc' },
-    });
-  }
-
-  async getCategorias() {
-    return this.prisma.categoria.findMany({
-      where: {
-        productos: {
-          some: { publicarWeb: true, stock: { gt: 0 }, sku: { not: null } },
-        },
-      },
-      orderBy: { nombre: 'asc' },
-    });
-  }
-
-  async getProductById(id: number) {
-    return this.prisma.producto.findUnique({
-      where: { id },
-      include: {
-        marca: true,
-        categoria: true,
-        imagenes: { orderBy: { orden: 'asc' } },
-      },
-    });
-  }
-
   async syncProducto(odooId: number) {
     const productos = await this.odoo.getProductoById(odooId);
 
@@ -389,6 +327,132 @@ export class CatalogService {
     return resultado;
   }
 
+  // ─── Queries públicas ─────────────────────────────────────────────────────────
+
+  async getProducts(filtros: {
+    marca?: string;
+    categoria?: string;
+    buscar?: string;
+    filtroExtra?: string;
+    page: number;
+    limit: number;
+  }) {
+    const { marca, categoria, buscar, filtroExtra, page, limit } = filtros;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      publicarWeb: true,
+      stock: { gt: 0 },
+      sku: { not: null },
+    };
+    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
+    if (categoria)
+      where.categoria = {
+        nombre: { equals: categoria, mode: 'insensitive' },
+      };
+    if (buscar) {
+      where.OR = [
+        { nombreWeb: { contains: buscar, mode: 'insensitive' } },
+        { nombre: { contains: buscar, mode: 'insensitive' } },
+        { sku: { contains: buscar } },
+      ];
+    }
+    this.aplicarFiltroExtra(where, filtroExtra);
+
+    const [productos, total] = await Promise.all([
+      this.prisma.producto.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { nombreWeb: 'asc' },
+        include: { marca: true, categoria: true, imagenes: true },
+      }),
+      this.prisma.producto.count({ where }),
+    ]);
+
+    return {
+      data: productos,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getAllProducts(filtros: {
+    marca?: string;
+    categoria?: string;
+    buscar?: string;
+    filtroExtra?: string;
+  }) {
+    const { marca, categoria, buscar, filtroExtra } = filtros;
+
+    const where: any = {
+      publicarWeb: true,
+      stock: { gt: 0 },
+      sku: { not: null },
+    };
+    if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
+    if (categoria)
+      where.categoria = {
+        nombre: { equals: categoria, mode: 'insensitive' },
+      };
+    if (buscar) {
+      where.OR = [
+        { nombreWeb: { contains: buscar, mode: 'insensitive' } },
+        { nombre: { contains: buscar, mode: 'insensitive' } },
+        { sku: { contains: buscar } },
+      ];
+    }
+    this.aplicarFiltroExtra(where, filtroExtra);
+
+    const todos = await this.prisma.producto.findMany({
+      where,
+      orderBy: { nombreWeb: 'asc' },
+      include: {
+        marca: true,
+        categoria: true,
+        imagenes: { orderBy: { orden: 'asc' } },
+      },
+    });
+
+    const resultado = this.agruparProductos(todos);
+    resultado.sort((a, b) =>
+      (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
+    );
+    return resultado;
+  }
+
+  async getMarcas() {
+    return this.prisma.marca.findMany({
+      where: {
+        productos: {
+          some: { publicarWeb: true, stock: { gt: 0 }, sku: { not: null } },
+        },
+      },
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
+  async getCategorias() {
+    return this.prisma.categoria.findMany({
+      where: {
+        productos: {
+          some: { publicarWeb: true, stock: { gt: 0 }, sku: { not: null } },
+        },
+      },
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
+  async getProductById(id: number) {
+    return this.prisma.producto.findUnique({
+      where: { id },
+      include: {
+        marca: true,
+        categoria: true,
+        imagenes: { orderBy: { orden: 'asc' } },
+      },
+    });
+  }
+
   async getProductosAgrupados(filtros: {
     marca?: string;
     categoria?: string;
@@ -406,7 +470,9 @@ export class CatalogService {
     };
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
     if (categoria)
-      where.categoria = { nombre: { equals: categoria, mode: 'insensitive' } };
+      where.categoria = {
+        nombre: { equals: categoria, mode: 'insensitive' },
+      };
     this.aplicarFiltroExtra(where, filtroExtra);
 
     const todos = await this.prisma.producto.findMany({
@@ -419,33 +485,7 @@ export class CatalogService {
       },
     });
 
-    const mapaGrupos = new Map<string, any>();
-    const sinGrupo: any[] = [];
-
-    for (const producto of todos) {
-      const grupo = producto.grupoVariante?.trim();
-      if (grupo) {
-        if (!mapaGrupos.has(grupo)) {
-          mapaGrupos.set(grupo, {
-            ...producto,
-            nombreWeb: grupo,
-            variantes: [producto],
-            stock: producto.stock,
-          });
-        } else {
-          const existente = mapaGrupos.get(grupo);
-          existente.variantes.push(producto);
-          existente.stock += producto.stock;
-          if (!existente.imagenes?.length && producto.imagenes?.length) {
-            existente.imagenes = producto.imagenes;
-          }
-        }
-      } else {
-        sinGrupo.push(producto);
-      }
-    }
-
-    const todos_agrupados = [...Array.from(mapaGrupos.values()), ...sinGrupo];
+    const todos_agrupados = this.agruparProductos(todos);
 
     const filtrados = buscar
       ? todos_agrupados.filter(
@@ -460,16 +500,18 @@ export class CatalogService {
       (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
     );
 
-    // ── Extraer marcas y categorías únicas de los productos filtrados ──
+    // Extraer marcas y categorías únicas de los productos filtrados
     const marcasMap = new Map<number, { id: number; nombre: string }>();
     const categoriasMap = new Map<number, { id: number; nombre: string }>();
 
     for (const p of filtrados) {
-      // En grupos, revisar todas las variantes para no perder opciones
       const variantes = p.variantes ?? [p];
       for (const v of variantes) {
         if (v.marca)
-          marcasMap.set(v.marca.id, { id: v.marca.id, nombre: v.marca.nombre });
+          marcasMap.set(v.marca.id, {
+            id: v.marca.id,
+            nombre: v.marca.nombre,
+          });
         if (v.categoria)
           categoriasMap.set(v.categoria.id, {
             id: v.categoria.id,
@@ -484,7 +526,6 @@ export class CatalogService {
     const categoriasDisponibles = Array.from(categoriasMap.values()).sort(
       (a, b) => a.nombre.localeCompare(b.nombre),
     );
-    // ──────────────────────────────────────────────────────────────────
 
     const total = filtrados.length;
     const skip = (page - 1) * limit;
@@ -496,33 +537,5 @@ export class CatalogService {
       marcasDisponibles,
       categoriasDisponibles,
     };
-  }
-
-  private calcularPrecioConIva(product: any, taxMap: Map<number, any>): number {
-    if (!product.taxes_id?.length) return product.list_price;
-    let precio = product.list_price;
-    for (const taxId of product.taxes_id) {
-      const tax = taxMap.get(taxId);
-      if (!tax) continue;
-      if (tax.amount_type === 'percent' && !tax.price_include) {
-        precio = precio * (1 + tax.amount / 100);
-      }
-    }
-    return Math.round(precio * 100) / 100;
-  }
-
-  private extraerMarca(product: any, posCategMap: Map<number, string>): string {
-    if (!product.pos_categ_ids) return '';
-    if (typeof product.pos_categ_ids === 'string') return product.pos_categ_ids;
-    if (
-      Array.isArray(product.pos_categ_ids) &&
-      product.pos_categ_ids.length > 0
-    ) {
-      const primera = product.pos_categ_ids[0];
-      if (typeof primera === 'number') return posCategMap.get(primera) || '';
-      if (Array.isArray(primera)) return primera[1] || '';
-      if (typeof primera === 'string') return primera;
-    }
-    return '';
   }
 }
