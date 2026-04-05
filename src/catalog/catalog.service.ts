@@ -460,6 +460,32 @@ export class CatalogService {
       (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
     );
 
+    // ── Extraer marcas y categorías únicas de los productos filtrados ──
+    const marcasMap = new Map<number, { id: number; nombre: string }>();
+    const categoriasMap = new Map<number, { id: number; nombre: string }>();
+
+    for (const p of filtrados) {
+      // En grupos, revisar todas las variantes para no perder opciones
+      const variantes = p.variantes ?? [p];
+      for (const v of variantes) {
+        if (v.marca)
+          marcasMap.set(v.marca.id, { id: v.marca.id, nombre: v.marca.nombre });
+        if (v.categoria)
+          categoriasMap.set(v.categoria.id, {
+            id: v.categoria.id,
+            nombre: v.categoria.nombre,
+          });
+      }
+    }
+
+    const marcasDisponibles = Array.from(marcasMap.values()).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre),
+    );
+    const categoriasDisponibles = Array.from(categoriasMap.values()).sort(
+      (a, b) => a.nombre.localeCompare(b.nombre),
+    );
+    // ──────────────────────────────────────────────────────────────────
+
     const total = filtrados.length;
     const skip = (page - 1) * limit;
     const data = filtrados.slice(skip, skip + limit);
@@ -467,6 +493,8 @@ export class CatalogService {
     return {
       data,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      marcasDisponibles,
+      categoriasDisponibles,
     };
   }
 
