@@ -206,7 +206,7 @@ export class CatalogService {
           precio,
           precioBase: product.list_price,
           sku: product.barcode || null,
-          stock: product.qty_available ?? 0,
+          stock: Number(product.qty_available) || 0,
           publicarWeb: product.x_publicar_web ?? false,
           grupoVariante: product.x_grupo_variante || null,
           odooWriteDate: product.write_date
@@ -309,7 +309,7 @@ export class CatalogService {
       precio,
       precioBase: product.list_price,
       sku: product.barcode || null,
-      stock: product.qty_available ?? 0,
+      stock: Number(product.qty_available) || 0,
       publicarWeb: product.x_publicar_web ?? false,
       grupoVariante: product.x_grupo_variante || null,
       odooWriteDate: product.write_date ? new Date(product.write_date) : null,
