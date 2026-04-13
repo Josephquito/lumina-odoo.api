@@ -12,19 +12,25 @@ export class WebhookService {
   ) {}
 
   async procesarCambio(body: any) {
-    // Odoo manda el ID del producto que cambió
     const odooId = body?._id || body?.id || body?.record_id;
+    const productVariantId = body?.product_id;
 
-    if (!odooId) {
+    if (!odooId && !productVariantId) {
       this.logger.warn('Webhook sin ID de producto');
       return { ok: false, mensaje: 'Sin ID de producto' };
     }
 
-    this.logger.log(`Webhook recibido — producto Odoo ID: ${odooId}`);
+    this.logger.log(
+      `Webhook recibido — ID: ${odooId}, variantId: ${productVariantId}`,
+    );
 
     try {
-      await this.catalog.syncProducto(odooId);
-      return { ok: true, odooId };
+      if (productVariantId) {
+        await this.catalog.syncProductoPorVariante(productVariantId);
+      } else {
+        await this.catalog.syncProducto(odooId);
+      }
+      return { ok: true };
     } catch (err: any) {
       this.logger.error(`✗ Error procesando webhook: ${err.message}`);
       return { ok: false, error: err.message };

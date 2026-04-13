@@ -1,9 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OdooService } from '../odoo/odoo.service';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class CatalogService {
+  @Cron('0 0 */2 * * *') // cada 2 horas
+  async cronSyncStock() {
+    this.logger.log('Cron: sincronizando stock de todos los productos...');
+    try {
+      const result = await this.syncInicial();
+      this.logger.log(
+        `Cron completado: ${result.actualizados} actualizados, ${result.errores} errores`,
+      );
+    } catch (err: any) {
+      this.logger.error(`Cron fallido: ${err.message}`);
+    }
+  }
+
   private readonly logger = new Logger(CatalogService.name);
 
   private readonly categoriasMap: Record<string, string> = {
@@ -559,5 +573,14 @@ export class CatalogService {
         imagenes: { orderBy: { orden: 'asc' } },
       },
     });
+  }
+
+  async syncProductoPorVariante(variantId: number) {
+    const productos = await this.odoo.getProductoByVariantId(variantId);
+    if (!productos?.length) {
+      this.logger.warn(`No se encontró template para variante ${variantId}`);
+      return null;
+    }
+    return this.syncProducto(productos[0].id);
   }
 }

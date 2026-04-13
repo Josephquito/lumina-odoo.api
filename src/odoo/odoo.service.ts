@@ -184,4 +184,43 @@ export class OdooService implements OnModuleInit {
       );
     });
   }
+
+  getProductoByVariantId(productProductId: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const client = xmlrpc.createSecureClient(`${this.url}/xmlrpc/2/object`);
+      client.methodCall(
+        'execute_kw',
+        [
+          this.db,
+          this.uid,
+          this.apiKey,
+          'product.template',
+          'search_read',
+          [[['product_variant_ids', 'in', [productProductId]]]],
+          {
+            fields: [
+              'name',
+              'description_sale',
+              'x_descripcion_web',
+              'list_price',
+              'barcode',
+              'qty_available',
+              'taxes_id',
+              'write_date',
+              'x_publicar_web',
+              'x_grupo_variante',
+              'pos_categ_ids',
+              'x_categoria_web',
+              'x_tipo_web',
+            ],
+            limit: 1,
+          },
+        ],
+        (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        },
+      );
+    });
+  }
 }

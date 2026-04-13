@@ -6,9 +6,11 @@ import { WebhookModule } from './webhook/webhook.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { ImagesModule } from './images/images.module';
 import { AuthModule } from './auth/auth.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     OdooModule,
