@@ -3,18 +3,18 @@ import {
   Post,
   Get,
   Delete,
-  Put,
+  Patch,
   Param,
   Body,
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ImagesService } from './images.service';
-import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -26,7 +26,13 @@ import { Rol } from './../generated/prisma/client';
 export class ImagesController {
   constructor(private readonly imagesService: ImagesService) {}
 
-  // Subir una imagen a un producto
+  @Patch('reorder')
+  async reordenarImagenes(
+    @Body() body: { items: { id: number; orden: number }[] },
+  ) {
+    return this.imagesService.reordenarImagenes(body.items);
+  }
+
   @Post(':productoId')
   @UseInterceptors(FileInterceptor('imagen', { storage: memoryStorage() }))
   async subirImagen(
@@ -41,7 +47,6 @@ export class ImagesController {
     );
   }
 
-  // Subir múltiples imágenes a un producto
   @Post(':productoId/bulk')
   @UseInterceptors(
     FilesInterceptor('imagenes', 10, { storage: memoryStorage() }),
@@ -58,23 +63,13 @@ export class ImagesController {
     return { total: resultados.length, imagenes: resultados };
   }
 
-  // Obtener imágenes de un producto
   @Get(':productoId')
   async getImagenes(@Param('productoId', ParseIntPipe) productoId: number) {
     return this.imagesService.getImagenes(productoId);
   }
 
-  // Eliminar imagen
   @Delete(':imagenId')
   async eliminarImagen(@Param('imagenId', ParseIntPipe) imagenId: number) {
     return this.imagesService.eliminarImagen(imagenId);
-  }
-
-  // Reordenar imágenes
-  @Put('reordenar')
-  async reordenarImagenes(
-    @Body() body: { ordenes: { id: number; orden: number }[] },
-  ) {
-    return this.imagesService.reordenarImagenes(body.ordenes);
   }
 }
