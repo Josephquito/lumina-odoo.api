@@ -77,6 +77,16 @@ model Usuario {
   @@map("usuarios")
 }
 
+model SiteMedia {
+  id       Int      @id @default(autoincrement())
+  url      String
+  orden    Int      @default(0)
+  key      String   // ej: 'tienda', 'hero', 'flyer_verano'
+  creadoEn DateTime @default(now())
+
+  @@map("site_media")
+}
+
 enum Rol {
   ADMIN
   VENDEDOR

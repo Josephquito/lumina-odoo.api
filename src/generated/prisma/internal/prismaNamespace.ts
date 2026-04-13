@@ -388,7 +388,8 @@ export const ModelName = {
   Categoria: 'Categoria',
   Producto: 'Producto',
   ProductoImagen: 'ProductoImagen',
-  Usuario: 'Usuario'
+  Usuario: 'Usuario',
+  SiteMedia: 'SiteMedia'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -404,7 +405,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "marca" | "categoria" | "producto" | "productoImagen" | "usuario"
+    modelProps: "marca" | "categoria" | "producto" | "productoImagen" | "usuario" | "siteMedia"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -778,6 +779,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SiteMedia: {
+      payload: Prisma.$SiteMediaPayload<ExtArgs>
+      fields: Prisma.SiteMediaFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SiteMediaFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SiteMediaFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>
+        }
+        findFirst: {
+          args: Prisma.SiteMediaFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SiteMediaFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>
+        }
+        findMany: {
+          args: Prisma.SiteMediaFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>[]
+        }
+        create: {
+          args: Prisma.SiteMediaCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>
+        }
+        createMany: {
+          args: Prisma.SiteMediaCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SiteMediaCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>[]
+        }
+        delete: {
+          args: Prisma.SiteMediaDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>
+        }
+        update: {
+          args: Prisma.SiteMediaUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>
+        }
+        deleteMany: {
+          args: Prisma.SiteMediaDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SiteMediaUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SiteMediaUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>[]
+        }
+        upsert: {
+          args: Prisma.SiteMediaUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SiteMediaPayload>
+        }
+        aggregate: {
+          args: Prisma.SiteMediaAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSiteMedia>
+        }
+        groupBy: {
+          args: Prisma.SiteMediaGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SiteMediaGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SiteMediaCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SiteMediaCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -879,6 +954,17 @@ export const UsuarioScalarFieldEnum = {
 } as const
 
 export type UsuarioScalarFieldEnum = (typeof UsuarioScalarFieldEnum)[keyof typeof UsuarioScalarFieldEnum]
+
+
+export const SiteMediaScalarFieldEnum = {
+  id: 'id',
+  url: 'url',
+  orden: 'orden',
+  key: 'key',
+  creadoEn: 'creadoEn'
+} as const
+
+export type SiteMediaScalarFieldEnum = (typeof SiteMediaScalarFieldEnum)[keyof typeof SiteMediaScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1087,6 +1173,7 @@ export type GlobalOmitConfig = {
   producto?: Prisma.ProductoOmit
   productoImagen?: Prisma.ProductoImagenOmit
   usuario?: Prisma.UsuarioOmit
+  siteMedia?: Prisma.SiteMediaOmit
 }
 
 /* Types for Logging */

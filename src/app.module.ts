@@ -7,6 +7,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { ImagesModule } from './images/images.module';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SiteMediaModule } from './site-media/site-media.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     WebhookModule,
     ImagesModule,
     AuthModule,
+    SiteMediaModule,
   ],
 })
 export class AppModule {}

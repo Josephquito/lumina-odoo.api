@@ -42,3 +42,8 @@ export type ProductoImagen = Prisma.ProductoImagenModel
  * 
  */
 export type Usuario = Prisma.UsuarioModel
+/**
+ * Model SiteMedia
+ * 
+ */
+export type SiteMedia = Prisma.SiteMediaModel
