@@ -102,9 +102,12 @@ export class CatalogService {
         .filter((v: any) => v.stock > 0)
         .reduce((acc: number, v: any) => acc + v.stock, 0);
 
-      // Imagen: cualquier variante del grupo, con o sin stock
+      // Imagen e ID: usar la primera variante que tenga imagen
       const conImagen = grupo.variantes.filter((v: any) => v.imagenes?.length);
-      if (conImagen.length) grupo.imagenes = conImagen[0].imagenes;
+      if (conImagen.length) {
+        grupo.id = conImagen[0].id;
+        grupo.imagenes = conImagen[0].imagenes;
+      }
 
       // SKU: menor lexicográfico de variantes con stock > 0
       const skus = grupo.variantes
