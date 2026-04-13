@@ -84,38 +84,49 @@ export class CatalogService {
             ...producto,
             nombreWeb: grupo,
             variantes: [producto],
-            stock: producto.stock,
+            stock: 0,
           });
         } else {
-          const existente = mapaGrupos.get(grupo);
-          existente.variantes.push(producto);
-          existente.stock += producto.stock;
+          mapaGrupos.get(grupo).variantes.push(producto);
         }
       } else {
         sinGrupo.push(producto);
       }
     }
 
-    // Post-proceso: SKU, imagen y precio deterministas
-    for (const [, grupo] of mapaGrupos) {
-      // Imagen: primera variante que tenga imagen
-      const conImagen = grupo.variantes.filter((v: any) => v.imagenes?.length);
-      if (conImagen.length) {
-        grupo.imagenes = conImagen[0].imagenes;
-      }
+    const resultado: any[] = [];
 
-      // SKU: el menor lexicográficamente → siempre el mismo sin importar el orden de Prisma
+    for (const [, grupo] of mapaGrupos) {
+      // Stock: suma solo variantes con stock > 0
+      grupo.stock = grupo.variantes
+        .filter((v: any) => v.stock > 0)
+        .reduce((acc: number, v: any) => acc + v.stock, 0);
+
+      // Imagen: cualquier variante del grupo, con o sin stock
+      const conImagen = grupo.variantes.filter((v: any) => v.imagenes?.length);
+      if (conImagen.length) grupo.imagenes = conImagen[0].imagenes;
+
+      // SKU: menor lexicográfico de variantes con stock > 0
       const skus = grupo.variantes
+        .filter((v: any) => v.stock > 0)
         .map((v: any) => v.sku)
         .filter(Boolean)
         .sort();
       grupo.sku = skus[0] ?? null;
 
-      // Precio: el menor del grupo
-      grupo.precio = Math.min(...grupo.variantes.map((v: any) => v.precio));
+      // Precio: menor de variantes con stock > 0
+      const precios = grupo.variantes
+        .filter((v: any) => v.stock > 0)
+        .map((v: any) => v.precio);
+      grupo.precio = precios.length ? Math.min(...precios) : grupo.precio;
+
+      // Solo incluir el grupo si tiene al menos una variante con stock
+      if (grupo.stock > 0) resultado.push(grupo);
     }
 
-    return [...Array.from(mapaGrupos.values()), ...sinGrupo];
+    const sinGrupoConStock = sinGrupo.filter((p) => p.stock > 0);
+
+    return [...resultado, ...sinGrupoConStock];
   }
 
   private calcularPrecioConIva(product: any, taxMap: Map<number, any>): number {
@@ -421,7 +432,6 @@ export class CatalogService {
 
     const where: any = {
       publicarWeb: true,
-      stock: { gt: 0 },
       sku: { not: null },
     };
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
@@ -467,7 +477,6 @@ export class CatalogService {
 
     const where: any = {
       publicarWeb: true,
-      stock: { gt: 0 },
       sku: { not: null },
     };
     if (marca) where.marca = { nombre: { equals: marca, mode: 'insensitive' } };
@@ -486,7 +495,6 @@ export class CatalogService {
 
     const agrupados = this.agruparProductos(todos);
 
-    // Búsqueda de texto post-agrupación
     const filtradosBuscar = buscar
       ? agrupados.filter(
           (p) =>
@@ -496,7 +504,6 @@ export class CatalogService {
         )
       : agrupados;
 
-    // filtroExtra sobre agrupados
     const filtrados = this.aplicarFiltroExtraAgrupado(
       filtradosBuscar,
       filtroExtra,
@@ -506,7 +513,6 @@ export class CatalogService {
       (a.nombreWeb || a.nombre).localeCompare(b.nombreWeb || b.nombre),
     );
 
-    // Marcas y categorías únicas de los filtrados
     const marcasMap = new Map<number, { id: number; nombre: string }>();
     const categoriasMap = new Map<number, { id: number; nombre: string }>();
 
