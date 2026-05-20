@@ -23,7 +23,10 @@ export class CotizadorService {
       },
       take: 15,
       orderBy: { nombreWeb: 'asc' },
-      include: { marca: true },
+      include: {
+        marca: true,
+        imagenes: { orderBy: { orden: 'asc' }, take: 1 },
+      },
     });
 
     const mapaGrupos = new Map<string, any>();
@@ -45,6 +48,7 @@ export class CotizadorService {
     const resultado: any[] = [];
 
     for (const [, grupo] of mapaGrupos) {
+      const conImagen = grupo.variantes.find((v: any) => v.imagenes?.length);
       const skus = grupo.variantes
         .filter((v: any) => v.stock > 0)
         .map((v: any) => v.sku)
@@ -63,6 +67,7 @@ export class CotizadorService {
         stock: grupo.variantes
           .filter((v: any) => v.stock > 0)
           .reduce((acc: number, v: any) => acc + v.stock, 0),
+        imagenes: conImagen?.imagenes ?? [],
       });
     }
 
@@ -75,6 +80,7 @@ export class CotizadorService {
         precio: p.precio,
         sku: p.sku,
         stock: p.stock,
+        imagenes: p.imagenes ?? [],
       })),
     ];
   }
