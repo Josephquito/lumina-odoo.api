@@ -69,3 +69,8 @@ export type Usuario = Prisma.UsuarioModel
  * 
  */
 export type SiteMedia = Prisma.SiteMediaModel
+/**
+ * Model TarifaEnvio
+ * 
+ */
+export type TarifaEnvio = Prisma.TarifaEnvioModel

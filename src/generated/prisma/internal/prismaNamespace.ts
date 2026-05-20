@@ -389,7 +389,8 @@ export const ModelName = {
   Producto: 'Producto',
   ProductoImagen: 'ProductoImagen',
   Usuario: 'Usuario',
-  SiteMedia: 'SiteMedia'
+  SiteMedia: 'SiteMedia',
+  TarifaEnvio: 'TarifaEnvio'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -405,7 +406,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "marca" | "categoria" | "producto" | "productoImagen" | "usuario" | "siteMedia"
+    modelProps: "marca" | "categoria" | "producto" | "productoImagen" | "usuario" | "siteMedia" | "tarifaEnvio"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -853,6 +854,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    TarifaEnvio: {
+      payload: Prisma.$TarifaEnvioPayload<ExtArgs>
+      fields: Prisma.TarifaEnvioFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TarifaEnvioFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TarifaEnvioFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>
+        }
+        findFirst: {
+          args: Prisma.TarifaEnvioFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TarifaEnvioFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>
+        }
+        findMany: {
+          args: Prisma.TarifaEnvioFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>[]
+        }
+        create: {
+          args: Prisma.TarifaEnvioCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>
+        }
+        createMany: {
+          args: Prisma.TarifaEnvioCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TarifaEnvioCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>[]
+        }
+        delete: {
+          args: Prisma.TarifaEnvioDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>
+        }
+        update: {
+          args: Prisma.TarifaEnvioUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>
+        }
+        deleteMany: {
+          args: Prisma.TarifaEnvioDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TarifaEnvioUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TarifaEnvioUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>[]
+        }
+        upsert: {
+          args: Prisma.TarifaEnvioUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TarifaEnvioPayload>
+        }
+        aggregate: {
+          args: Prisma.TarifaEnvioAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTarifaEnvio>
+        }
+        groupBy: {
+          args: Prisma.TarifaEnvioGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TarifaEnvioGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TarifaEnvioCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TarifaEnvioCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -965,6 +1040,15 @@ export const SiteMediaScalarFieldEnum = {
 } as const
 
 export type SiteMediaScalarFieldEnum = (typeof SiteMediaScalarFieldEnum)[keyof typeof SiteMediaScalarFieldEnum]
+
+
+export const TarifaEnvioScalarFieldEnum = {
+  id: 'id',
+  destino: 'destino',
+  tarifa: 'tarifa'
+} as const
+
+export type TarifaEnvioScalarFieldEnum = (typeof TarifaEnvioScalarFieldEnum)[keyof typeof TarifaEnvioScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1174,6 +1258,7 @@ export type GlobalOmitConfig = {
   productoImagen?: Prisma.ProductoImagenOmit
   usuario?: Prisma.UsuarioOmit
   siteMedia?: Prisma.SiteMediaOmit
+  tarifaEnvio?: Prisma.TarifaEnvioOmit
 }
 
 /* Types for Logging */

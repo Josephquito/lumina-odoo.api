@@ -8,6 +8,7 @@ import { ImagesModule } from './images/images.module';
 import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SiteMediaModule } from './site-media/site-media.module';
+import { CotizadorModule } from './cotizador/cotizador.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SiteMediaModule } from './site-media/site-media.module';
     ImagesModule,
     AuthModule,
     SiteMediaModule,
+    CotizadorModule,
   ],
 })
 export class AppModule {}

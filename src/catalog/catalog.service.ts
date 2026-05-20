@@ -498,13 +498,30 @@ export class CatalogService {
 
     const agrupados = this.agruparProductos(todos);
 
-    const filtradosBuscar = buscar
-      ? agrupados.filter(
-          (p) =>
-            p.nombreWeb?.toLowerCase().includes(buscar.toLowerCase()) ||
-            p.nombre?.toLowerCase().includes(buscar.toLowerCase()) ||
-            p.sku?.includes(buscar),
-        )
+    // DESPUÉS
+    const buscarLower = buscar?.toLowerCase();
+    const filtradosBuscar = buscarLower
+      ? agrupados.filter((p) => {
+          const variantes: any[] = p.variantes ?? [p];
+
+          const matchNombre =
+            p.nombreWeb?.toLowerCase().includes(buscarLower) ||
+            p.nombre?.toLowerCase().includes(buscarLower);
+
+          const matchSku = variantes.some((v) =>
+            v.sku?.toLowerCase().includes(buscarLower),
+          );
+
+          const matchMarca = variantes.some((v) =>
+            v.marca?.nombre?.toLowerCase().includes(buscarLower),
+          );
+
+          const matchCategoria = variantes.some((v) =>
+            v.categoria?.nombre?.toLowerCase().includes(buscarLower),
+          );
+
+          return matchNombre || matchSku || matchMarca || matchCategoria;
+        })
       : agrupados;
 
     const filtrados = this.aplicarFiltroExtraAgrupado(

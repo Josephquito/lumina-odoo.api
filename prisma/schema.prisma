@@ -87,6 +87,14 @@ model SiteMedia {
   @@map("site_media")
 }
 
+model TarifaEnvio {
+  id      Int    @id @default(autoincrement())
+  destino String @unique
+  tarifa  Float
+
+  @@map("tarifas_envio")
+}
+
 enum Rol {
   ADMIN
   VENDEDOR
